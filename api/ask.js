@@ -1,40 +1,29 @@
-import { Groq } from "groq-sdk";
-import supermarketInfo from "../services/supermarketInfo.js";
+export async function GET() {
+  return Response.json({
+    status: "online",
+    message: "API funcionando! Use POST para enviar mensagens."
+  });
+}
 
-const client = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método não permitido" });
-  }
-
+export async function POST(req) {
   try {
-    const { question } = req.body;
+    const body = await req.json();
 
-    const context = supermarketInfo(question);
+    if (!body || !body.message) {
+      return Response.json(
+        { error: "Envie um campo 'message' no body." },
+        { status: 400 }
+      );
+    }
 
-    const prompt = `
-Você é a IA oficial do app de supermercado. Responda somente com base nisso:
-${context}
+    // Aqui vai a lógica da sua IA
+    const resposta = "Recebi sua mensagem: " + body.message;
 
-Pergunta: ${question}
-    `;
-
-    const response = await client.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [
-        { role: "user", content: prompt }
-      ]
-    });
-
-    res.status(200).json({
-      reply: response.choices[0].message.content
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao gerar resposta" });
+    return Response.json({ resposta });
+  } catch (e) {
+    return Response.json(
+      { error: "Erro ao processar requisição.", detalhe: e.message },
+      { status: 500 }
+    );
   }
 }
