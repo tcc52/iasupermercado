@@ -1,28 +1,42 @@
-export async function GET() {
-  return Response.json({
-    status: "online",
-    message: "API funcionando! Use POST para enviar mensagens."
-  });
-}
+import Groq from "groq-sdk";
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const { question } = await req.json();
 
-    if (!body || !body.message) {
+    if (!question) {
       return Response.json(
-        { error: "Envie um campo 'message' no body." },
+        { error: "Você precisa enviar um campo 'question'" },
         { status: 400 }
       );
     }
 
-    // Resposta simples (pode trocar depois pela IA final)
-    const resposta = "Recebi sua mensagem: " + body.message;
+    // Chamada ao modelo do Groq
+    const completion = await groq.chat.completions.create({
+      model: "mixtral-8x7b-32768",
+      messages: [
+        {
+          role: "system",
+          content: "Você é uma IA de supermercado. Responda sempre de forma curta e direta."
+        },
+        {
+          role: "user",
+          content: question
+        }
+      ]
+    });
 
-    return Response.json({ resposta });
-  } catch (e) {
+    const resposta = completion.choices[0]?.message?.content || "Sem resposta.";
+
+    return Response.json({ answer: resposta });
+
+  } catch (err) {
     return Response.json(
-      { error: "Erro ao processar requisição.", detalhe: e.message },
+      { error: "Erro no servidor: " + err.message },
       { status: 500 }
     );
   }
